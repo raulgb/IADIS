@@ -73,7 +73,7 @@ end
 
 to evaporate-pheromone ;; evapoartes everypatch by a given %
   ask patches [
-    set pheromones pheromones * 0.9
+    set pheromones pheromones * ( (100 - evaporation-rate ) / 100 )
   ]
 end
 
@@ -288,8 +288,8 @@ SLIDER
 139
 diffusion-rate
 diffusion-rate
-0.0
-99.0
+1.0
+90.0
 83.0
 1.0
 1
@@ -303,9 +303,9 @@ SLIDER
 174
 evaporation-rate
 evaporation-rate
-0.0
-99.0
-25.0
+1.0
+90.0
+16.0
 1.0
 1
 NIL
