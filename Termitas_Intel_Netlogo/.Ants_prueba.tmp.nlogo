@@ -62,8 +62,8 @@ end
 
 to move-turtles ;;seeks the best path to move and then move
   ask turtles [
-    right random 360 ;;testing purposes
-    forward 1 ;;testing purposes
+    right random 360
+    forward 1
   ]
   tick
 end
