@@ -14,7 +14,7 @@ to setup
   clear-all
   create-turtles population
   setup-general
-  setup-turtles
+  setup-ants
   setup-patches
   reset-ticks
 end
@@ -23,14 +23,14 @@ to setup-general
   set color-pheromone red
   set color-patch green
   set color-ant blue
-  set drop-pheromones 2
-  set max-pheromones 10
+  ;set drop-pheromones 2 ;;uncomment this in order to initialize always with the same values
+  ;set max-pheromones 10
   set min-pheromones max-pheromones * 0.05
-  set maxpxcor max-pxcor - 5
-  set maxpycor max-pycor - 5
+  set maxpxcor max-pxcor - 3 ;;this way we ensure tha map is not crossed
+  set maxpycor max-pycor - 3 ;;this way we ensure tha map is not crossed
 end
 
-to setup-turtles
+to setup-ants
    ask turtles [
     set color color-ant
   ]
@@ -45,30 +45,28 @@ to setup-patches
 end
 
 to go  ;; forever button
-  path-turtles
-  move-turtles
+  path-ants
+  move-ants
   diffuse-pheromone
   evaporate-pheromone
   change-color
 end
 
-to path-turtles ;;leaves the pheromone on the current patch
+to path-ants ;;leaves the pheromone on the current patch
   ask turtles [
     let sumPheromones pheromones + drop-pheromones
-    ifelse sumPheromones > max-pheromones
-    [ set pheromones sumPheromones ]
-    [ set pheromones max-pheromones ]
+    ifelse sumPheromones > max-pheromones ;;pheromones is the variable of pathces-own
+    [ set pheromones sumPheromones ] ;;if we don't exceed the maximum pheromone per patch
+    [ set pheromones max-pheromones ] ;;else
   ]
 end
 
-to move-turtles ;;seeks the best path to move and then move
+to move-ants ;;seeks the best path to move and then move
   ask turtles [
-    ;right random 360 ;;testing purposes
-    ;;testing purposes
-    let contList [0 0 0]
-    let coorList1 [0 0]
-    let coorList2 [0 0]
-    let coorList3 [0 0]
+    let contList [0 0 0] ;;for each direction, we store the pheromones on that direction
+    let coorList1 [0 0] ;;store the future pxcor and pycor for left ahead
+    let coorList2 [0 0] ;;store the future pxcor and pycor for ahead
+    let coorList3 [0 0] ;;store the future pxcor and pycor for right ahead
     ask patch-left-and-ahead 45 1 [
       set contList replace-item 0 contList pheromones
       set coorList1 replace-item 0 coorList1 pxcor
@@ -85,30 +83,30 @@ to move-turtles ;;seeks the best path to move and then move
       set coorList3 replace-item 1 coorList3 pycor
     ]
     let maxPos getPosMaximum contList
-    if maxPos = 0 [
-      ifelse maxpxcor >= abs item 0 coorList1 ;; true if wall going to the left side on X-Axis
-      [right 60]
-      [
-        ifelse maxpycor >= abs item 1 coorList1 ;; true if wall going to the left side on Y-Axis
-        [right 60]
-        [left 45]
-      ]
-    ]
-    if maxPos = 1 [
-      ifelse maxpxcor >= abs item 0 coorList2
+    if maxPos = 0 [ ;;left and ahead
+      ifelse maxpxcor < abs item 0 coorList1 ;; true if wall going to the left side on X-Axis
       [right 180]
       [
-        if maxpycor >= abs item 1 coorList2
+        ifelse maxpycor < abs item 1 coorList1 ;; true if wall going to the left side on Y-Axis
+        [right 180]
+        [left 45] ;;we are not on the limits of the map
+      ]
+    ]
+    if maxPos = 1 [ ;;ahead
+      ifelse maxpxcor < abs item 0 coorList2
+      [right 180]
+      [
+        if maxpycor < abs item 1 coorList2
         [right 180]
       ]
     ]
-    if maxPos = 2 [
-      ifelse maxpxcor >= abs item 0 coorList3
-      [left 60]
+    if maxPos = 2 [  ;;right and ahead
+      ifelse maxpxcor < abs item 0 coorList3
+      [left 180]
       [
-        ifelse maxpycor >= abs item 1 coorList3
-        [left 60]
-        [right 45]
+        ifelse maxpycor < abs item 1 coorList3
+        [left 180]
+        [right 45] ;;we are not on the limits of the map
       ]
     ]
     forward 1
@@ -145,16 +143,16 @@ to-report getPosMaximum [myList]
   let maxNumber max myList
   let maxLoop length myList
   let auxList [-1 -1 -1]
-  let contador 0
-  let numero 0
+  let cont 0
+  let num 0
   loop [
-    if contador = maxLoop [
-      set auxList filter [i -> i >= 0] auxList
-      set auxList one-of auxList
+    if cont = maxLoop [
+      set auxList filter [i -> i >= 0] auxList ;;filter by only positive positions (valid)
+      set auxList one-of auxList ;;if we have more than 1 possible, we just hcoose randomly
       report auxList ]
-    set numero item contador myList
-    if maxNumber = numero [set auxList replace-item contador auxList contador]
-    set contador contador + 1
+    set num item cont myList
+    if maxNumber = num [set auxList replace-item cont auxList cont]
+    set cont cont + 1
   ]
 end
 @#$#@#$#@
@@ -211,7 +209,7 @@ diffusion-rate
 diffusion-rate
 1.0
 90.0
-90.0
+21.0
 1.0
 1
 NIL
@@ -226,7 +224,7 @@ evaporation-rate
 evaporation-rate
 1.0
 90.0
-27.0
+12.0
 1.0
 1
 NIL
@@ -258,7 +256,7 @@ population
 population
 0.0
 200.0
-63.0
+42.0
 1.0
 1
 NIL
