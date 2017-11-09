@@ -3,12 +3,11 @@ patches-own [
 ]
 
 globals [
-  max-pheromones ;;max pheromones per patch
-  min-pheromones ;;minimuim pheromones per patch, ;;this way we ensure that when the evaporate value is low, we can set it back patch to 0
-  drop-pheromones ;;standard value when an ant drops pheromones
   color-pheromone
   color-patch
   color-ant
+  maxpxcor
+  maxpycor
 ]
 
 to setup
@@ -24,9 +23,11 @@ to setup-general
   set color-pheromone red
   set color-patch green
   set color-ant blue
-  set drop-pheromones 20
-  set max-pheromones 80
+  set drop-pheromones 2
+  set max-pheromones 10
   set min-pheromones max-pheromones * 0.05
+  set maxpxcor max-pxcor - 5
+  set maxpycor max-pycor - 5
 end
 
 to setup-turtles
@@ -51,7 +52,7 @@ to go  ;; forever button
   change-color
 end
 
-to path-turtles ;;leaves the pheromone
+to path-turtles ;;leaves the pheromone on the current patch
   ask turtles [
     let sumPheromones pheromones + drop-pheromones
     ifelse sumPheromones > max-pheromones
@@ -62,13 +63,61 @@ end
 
 to move-turtles ;;seeks the best path to move and then move
   ask turtles [
-    right random 360 ;;testing purposes
-    forward 1 ;;testing purposes
+    ;right random 360 ;;testing purposes
+    ;;testing purposes
+    let contList [0 0 0]
+    let coorList1 [0 0]
+    let coorList2 [0 0]
+    let coorList3 [0 0]
+    ask patch-left-and-ahead 45 1 [
+      set contList replace-item 0 contList pheromones
+      set coorList1 replace-item 0 coorList1 pxcor
+      set coorList1 replace-item 1 coorList1 pycor
+    ]
+    ask patch-ahead 1 [
+      set contList replace-item 1 contList pheromones
+      set coorList2 replace-item 0 coorList2 pxcor
+      set coorList2 replace-item 1 coorList2 pycor
+    ]
+    ask patch-right-and-ahead 45 1 [
+      set contList replace-item 2 contList pheromones
+      set coorList3 replace-item 0 coorList3 pxcor
+      set coorList3 replace-item 1 coorList3 pycor
+    ]
+    let maxPos getPosMaximum contList
+    if maxPos = 0 [
+      ifelse maxpxcor >= abs item 0 coorList1 ;; true if wall going to the left side on X-Axis
+      [right 60]
+      [
+        ifelse maxpycor >= abs item 1 coorList1 ;; true if wall going to the left side on Y-Axis
+        [right 60]
+        [left 45]
+      ]
+    ]
+    if maxPos = 1 [
+      ifelse maxpxcor >= abs item 0 coorList2
+      [right 180]
+      [
+        if maxpycor >= abs item 1 coorList2
+        [right 180]
+      ]
+    ]
+    if maxPos = 2 [
+      ifelse maxpxcor >= abs item 0 coorList3
+      [left 60]
+      [
+        ifelse maxpycor >= abs item 1 coorList3
+        [left 60]
+        [right 45]
+      ]
+    ]
+    forward 1
   ]
   tick
 end
 
 to diffuse-pheromone ;;every patch adds to nearby patches a given % of the current pheromones
+  diffuse pheromones diffusion-rate / 100
 end
 
 to evaporate-pheromone ;; evapoartes everypatch by a given %
@@ -91,151 +140,23 @@ to change-color ;; changes the color of the patches depending on the value
   ]
 end
 
-;patches-own [
-;  chemical             ;; amount of chemical on this patch
-;  food                 ;; amount of food on this patch (0, 1, or 2)
-;  nest?                ;; true on nest patches, false elsewhere
-;  nest-scent           ;; number that is higher closer to the nest
-;  food-source-number   ;; number (1, 2, or 3) to identify the food sources
-;]
-;
-;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; Setup procedures ;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;
-;
-;to setup
-;  clear-all
-;  create-turtles population [
-;    set color red
-;    set size 2         ;; easier to see
-;  ]
-;  setup-patches
-;  reset-ticks
-;end
-;
-;to setup-patches
-;  ask patches
-;  [ setup-nest
-;    setup-food
-;    recolor-patch ]
-;end
-;
-;to setup-nest  ;; patch procedure
-;  ;; set nest? variable to true inside the nest, false elsewhere
-;  set nest? (distancexy 0 0) < 5
-;  ;; spread a nest-scent over the whole world -- stronger near the nest
-;  set nest-scent 200 - distancexy 0 0
-;end
-;
-;to setup-food  ;; patch procedure
-;  ;; setup food source one on the right
-;  if (distancexy (0.6 * max-pxcor) 0) < 5
-;  [ set food-source-number 1 ]
-;  ;; setup food source two on the lower-left
-;  if (distancexy (-0.6 * max-pxcor) (-0.6 * max-pycor)) < 5
-;  [ set food-source-number 2 ]
-;  ;; setup food source three on the upper-left
-;  if (distancexy (-0.8 * max-pxcor) (0.8 * max-pycor)) < 5
-;  [ set food-source-number 3 ]
-;  ;; set "food" at sources to either 1 or 2, randomly
-;  if food-source-number > 0
-;  [ set food one-of [1 2] ]
-;end
-;
-;to recolor-patch  ;; patch procedure
-;  ;; give color to nest and food sources
-;  ifelse nest?
-;  [ set pcolor violet ]
-;  [ ifelse food > 0
-;    [ if food-source-number = 1 [ set pcolor cyan ]
-;      if food-source-number = 2 [ set pcolor sky  ]
-;      if food-source-number = 3 [ set pcolor blue ] ]
-;    ;; scale color to show chemical concentration
-;    [ set pcolor scale-color green chemical 0.1 5 ] ]
-;end
-;
-;;;;;;;;;;;;;;;;;;;;;;
-;;;; Go procedures ;;;
-;;;;;;;;;;;;;;;;;;;;;;
-;
-;to go  ;; forever button
-;  ask turtles
-;  [ if who >= ticks [ stop ] ;; delay initial departure
-;    ifelse color = red
-;    [ look-for-food  ]       ;; not carrying food? look for it
-;    [ return-to-nest ]       ;; carrying food? take it back to nest
-;    wiggle
-;    fd 1 ]
-;  diffuse chemical (diffusion-rate / 100)
-;  ask patches
-;  [ set chemical chemical * (100 - evaporation-rate) / 100  ;; slowly evaporate chemical
-;    recolor-patch ]
-;  tick
-;end
-;
-;to return-to-nest  ;; turtle procedure
-;  ifelse nest?
-;  [ ;; drop food and head out again
-;    set color red
-;    rt 180 ]
-;  [ set chemical chemical + 60  ;; drop some chemical
-;    uphill-nest-scent ]         ;; head toward the greatest value of nest-scent
-;end
-;
-;to look-for-food  ;; turtle procedure
-;  if food > 0
-;  [ set color orange + 1     ;; pick up food
-;    set food food - 1        ;; and reduce the food source
-;    rt 180                   ;; and turn around
-;    stop ]
-;  ;; go in the direction where the chemical smell is strongest
-;  if (chemical >= 0.05) and (chemical < 2)
-;  [ uphill-chemical ]
-;end
-;
-;;; sniff left and right, and go where the strongest smell is
-;to uphill-chemical  ;; turtle procedure
-;  let scent-ahead chemical-scent-at-angle   0
-;  let scent-right chemical-scent-at-angle  45
-;  let scent-left  chemical-scent-at-angle -45
-;  if (scent-right > scent-ahead) or (scent-left > scent-ahead)
-;  [ ifelse scent-right > scent-left
-;    [ rt 45 ]
-;    [ lt 45 ] ]
-;end
-;
-;;; sniff left and right, and go where the strongest smell is
-;to uphill-nest-scent  ;; turtle procedure
-;  let scent-ahead nest-scent-at-angle   0
-;  let scent-right nest-scent-at-angle  45
-;  let scent-left  nest-scent-at-angle -45
-;  if (scent-right > scent-ahead) or (scent-left > scent-ahead)
-;  [ ifelse scent-right > scent-left
-;    [ rt 45 ]
-;    [ lt 45 ] ]
-;end
-;
-;to wiggle  ;; turtle procedure
-;  rt random 40
-;  lt random 40
-;  if not can-move? 1 [ rt 180 ]
-;end
-;
-;to-report nest-scent-at-angle [angle]
-;  let p patch-right-and-ahead angle 1
-;  if p = nobody [ report 0 ]
-;  report [nest-scent] of p
-;end
-;
-;to-report chemical-scent-at-angle [angle]
-;  let p patch-right-and-ahead angle 1
-;  if p = nobody [ report 0 ]
-;  report [chemical] of p
-;end
-;
-;
-;; Copyright 1997 Uri Wilensky.
-;; See Info tab for full copyright and license.
+;;extracts the position of the biggest number of the list, if there are more than 1 picks the position randomly
+to-report getPosMaximum [myList]
+  let maxNumber max myList
+  let maxLoop length myList
+  let auxList [-1 -1 -1]
+  let contador 0
+  let numero 0
+  loop [
+    if contador = maxLoop [
+      set auxList filter [i -> i >= 0] auxList
+      set auxList one-of auxList
+      report auxList ]
+    set numero item contador myList
+    if maxNumber = numero [set auxList replace-item contador auxList contador]
+    set contador contador + 1
+  ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 257
@@ -290,7 +211,7 @@ diffusion-rate
 diffusion-rate
 1.0
 90.0
-83.0
+90.0
 1.0
 1
 NIL
@@ -305,7 +226,7 @@ evaporation-rate
 evaporation-rate
 1.0
 90.0
-16.0
+27.0
 1.0
 1
 NIL
@@ -337,31 +258,11 @@ population
 population
 0.0
 200.0
-16.0
+63.0
 1.0
 1
 NIL
 HORIZONTAL
-
-PLOT
-6
-291
-249
-570
-Food in each pile
-time
-food
-0.0
-50.0
-0.0
-120.0
-true
-false
-"" ""
-PENS
-"food-in-pile1" 1.0 0 -11221820 true "" "plotxy ticks sum [food] of patches with [pcolor = cyan]"
-"food-in-pile2" 1.0 0 -13791810 true "" "plotxy ticks sum [food] of patches with [pcolor = sky]"
-"food-in-pile3" 1.0 0 -13345367 true "" "plotxy ticks sum [food] of patches with [pcolor = blue]"
 
 SLIDER
 38
@@ -373,6 +274,51 @@ smell-range
 1
 10
 1.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+46
+237
+218
+270
+drop-pheromones
+drop-pheromones
+2
+20
+2.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+45
+296
+217
+329
+min-pheromones
+min-pheromones
+0
+20
+0.5
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+55
+362
+227
+395
+max-pheromones
+max-pheromones
+10
+50
+10.0
 1
 1
 NIL
