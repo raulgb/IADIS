@@ -1,6 +1,11 @@
 globals [
   propietaris
   cases
+  cases-llogades
+  any
+  mes
+  canvi-mes
+  dia
 ]
 
 turtles-own [
@@ -10,7 +15,9 @@ turtles-own [
   propietari       ;; En cas de ser una casa s'indica qui es el propietari
   buida            ;; si es casa hem de saber si esta plena o buida
   llogada          ;; Ens diu si esta llogada
+  preu-fix         ;; Preu fix del lloguer sobre el que s'opera
   preu-sou         ;; Preu o sou depenent de si es la casa o el llogater
+  preu-lloguer     ;; Preu a pagar definitu
   llogater         ;; LLogater
   moviment         ;; Preu o sou depenent de si es la casa o el llogater
   inici-visites    ;; inici visites
@@ -18,6 +25,9 @@ turtles-own [
   objectiu         ;; Te casa a la que vol visitar
   casa-objectiu    ;; Casa objectiu
   rebaixes         ;; Numero d'intents de rebaixes o rebaixes fetes
+  classe           ;; Alta, "media", baja
+  mesos-contracte  ;; Definim el numero de mesos de contracte
+  mesos-revisar-pis;; Mesos que queden per tornar a revisar cases
 ]
 
 to setup
@@ -25,6 +35,11 @@ to setup
   reset-ticks
   ;; Iniciem els propietaris i els posem a la llista de propietaris - 5 propietaris ostenten totes les cases
   set propietaris []
+  set cases-llogades 0
+  set dia 1
+  set mes 1
+  set canvi-mes 0
+  set any 0
   create-turtles 5 [
     set shape "box"
     set next-messages [] ;; Inicializamos las listas de mensajes recibidos
@@ -45,6 +60,7 @@ to setup
     set objectiu false
     set cases-visitades []
     set rebaixes 0
+    set mesos-revisar-pis 12
   ]
 
   ;;Iniciem les cases que tenen uns propietaris que son alguns dels d'abans
@@ -60,11 +76,13 @@ to setup
     set buida true
     set llogater nobody
     set llogada false
-    set preu-sou 500 + random 500
+    set preu-fix 500 + random 500
+    set preu-sou preu-fix
   ]
 end
 
 to go
+  augmentem-dia            ;; Augmentem el dia en que ens trobem
   move-llogaters           ; Mou els llogaters
   swap-messages            ;; Activamos los mensajes mandados en la iteración anterior
   process-messages         ;; Procesamos los mensajes
@@ -73,10 +91,51 @@ to go
   tick
 end
 
+;; Per cada passa augmenta un dia
+to augmentem-dia
+  set dia dia + 1
+  set canvi-mes 0
+  if dia > 30 [
+    set mes mes + 1
+    set canvi-mes 1
+    set dia 1
+    if mes > 12 [
+      set any any + 1
+      set mes 1
+    ]
+  ]
+end
+
 to move-llogaters
   ask turtles [
-    if tipo = "L" and moviment [fd 1]
-    if tipo = "C" [print llogater]
+    if tipo = "L" and moviment [
+      ;; Revisem els pisos que ja haviem mirat fa temps
+      if canvi-mes = 1[
+        set mesos-revisar-pis mesos-revisar-pis - 1
+        if mesos-revisar-pis = 0 [
+          set mesos-revisar-pis 12
+          borrar-llista
+        ]
+      ]
+      ;; Fem una pasa
+      fd 1]
+    if tipo = "C" [
+      ifelse llogater = nobody [
+        let percentatge-llogades (cases-llogades) / (length cases)
+         if ( percentatge-llogades * 100 ) > 25 [
+          set preu-sou preu-fix + preu-fix * 0.05 * ( 1 / ( 1 - percentatge-llogades ) )
+        ]
+      ] [
+        ;; En cas de que estigui llogat anem reduint els mesos que li queden de contracte
+        if canvi-mes = 1 [
+          set mesos-contracte mesos-contracte - 1
+          if mesos-contracte = 0 [
+            alliberar-llogater llogater
+            alliberar-casa
+          ]
+        ]
+      ]
+    ]
   ]
 end
 
@@ -147,10 +206,10 @@ to send-messages
               set objectiu objectiu-temp
               set heading towardsxy xcor-temp2 ycor-temp2
               set casa-objectiu casa-objectiu-temp
-              if llogada [
+              if llogater != nobody [
                 set cases-visitades lput una-casa cases-visitades
               ]
-              set objectiu false
+              set objectiu-temp false
             ] ]
 
           ;;En el cas que no tingui cap aprop defineix un objectiu a distancia menor que 20
@@ -220,6 +279,9 @@ to comprova-preu [sender preu]
     ifelse preu < preu-sou
     [
      llogar-casa sender "Vull llogar"
+      ask sender[
+        set preu-lloguer preu
+      ]
       set rebaixes 0
     ]
     [
@@ -243,17 +305,49 @@ to comprova-preu [sender preu]
   ]
 end
 
+;; Quan un llogater s'enva reestablim certs valors
+to alliberar-casa
+  ask self[
+    set buida true
+    set llogater nobody
+    set llogada false
+    set color white
+    set cases-llogades cases-llogades - 1
+  ]
+end
+
+;; Alliberar llogater
+to alliberar-llogater [llogater-temp]
+  ask llogater-temp[
+    set moviment true
+    set inici-visites false
+    set objectiu false
+    set cases-visitades []
+    set rebaixes 0
+    set mesos-revisar-pis 12
+  ]
+end
 ;; Lloga casa
 to llogar-casa [sender message]
   send-message sender "llogar" message
 end
 
+;; Borra la llista de pisos visitats
+to borrar-llista
+  ask self [
+    set cases-visitades []
+  ]
+end
+
+;; Activa certs elements del lloguer
 to activa-lloguer [sender]
   ask self[
+    set mesos-contracte 12
     set buida false
     set color red
     set llogater sender
     set llogada true
+    set cases-llogades cases-llogades + 1
   ]
 end
 
@@ -342,6 +436,17 @@ NIL
 NIL
 NIL
 1
+
+MONITOR
+101
+187
+203
+232
+cases-lloguer
+cases-llogades
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
