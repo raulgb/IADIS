@@ -15,6 +15,7 @@ De momento el programa hace:
   - Si tuvieramos más caracterizaciones como possibles avales o así lo podríamos poner en la negociacion <br />
   - Si pusieramos mas cosas haría falta cambiar el intercambio de mensajes en el proceso de negociacion o puede que no <br />
 ## 6.- Los llogaters: van en busca de casas que esten a 20 de distancia <br />
-  - Se tendrian que definir cambios en el sueldo, o que se queda en el paro u otras y así pues marcar elementos de crisis que se visualizaran
+  - Se tendrian que definir cambios en el sueldo, o que se queda en el paro u otras y así pues marcar elementos de crisis que se visualizaran < br/>
+  - Definir a que clase pertenece 
 ## 7.- Casas <br />
   - Definir precio en funcion de 3 calidades de casa: baja, media, alta; y también en función del numero de casa en el mercado
