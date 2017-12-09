@@ -9,11 +9,15 @@ turtles-own [
   tipo             ;; Tipus, si es propietari o llogater
   propietari       ;; En cas de ser una casa s'indica qui es el propietari
   buida            ;; si es casa hem de saber si esta plena o buida
+  llogada          ;; Ens diu si esta llogada
   preu-sou         ;; Preu o sou depenent de si es la casa o el llogater
   llogater         ;; LLogater
   moviment         ;; Preu o sou depenent de si es la casa o el llogater
   inici-visites    ;; inici visites
   cases-visitades  ;; Cases ja visitades
+  objectiu         ;; Te casa a la que vol visitar
+  casa-objectiu    ;; Casa objectiu
+  rebaixes         ;; Numero d'intents de rebaixes o rebaixes fetes
 ]
 
 to setup
@@ -30,7 +34,7 @@ to setup
   ]
 
   ;; Iniciem els llogaters
-  create-turtles 10 [
+  create-turtles 100 [
     set shape "person"
     set next-messages [] ;; Inicializamos las listas de mensajes recibidos
     setxy random-xcor random-ycor
@@ -38,20 +42,24 @@ to setup
     set preu-sou 500 + random 500
     set moviment true
     set inici-visites false
+    set objectiu false
     set cases-visitades []
+    set rebaixes 0
   ]
 
   ;;Iniciem les cases que tenen uns propietaris que son alguns dels d'abans
   set cases []
-  create-turtles 10 [
+  create-turtles 100 [
     set shape "house"
+    set color white
     set next-messages [] ;; Inicializamos las listas de mensajes recibidos
     setxy random-xcor random-ycor
     set tipo "C"
     set propietari item (random 5) propietaris    ;; random 5 pels 5 propietaris
     set cases lput self cases
     set buida true
-    set llogater "Cap"
+    set llogater nobody
+    set llogada false
     set preu-sou 500 + random 500
   ]
 end
@@ -104,6 +112,8 @@ to send-messages
       let cases-plena false
       let inici-visites-temp inici-visites
       let cases-visitades-temp cases-visitades
+      let objectiu-temp objectiu
+      let casa-objectiu-temp casa-objectiu
       ;; Comprovem si passen aprop d'una casa
      (foreach cases
         [ [una-casa] -> ask una-casa [
@@ -122,12 +132,39 @@ to send-messages
           ]
 
           let some_operation (((xcor - xcor-temp) * (xcor - xcor-temp) + (ycor - ycor-temp) * (ycor - ycor-temp) ) ^ (1 / 2))
-          ;; Comprueba distancia, que este vacia la casa, que no haya escogido otra casa cercana ya(casa-plena) y que no haya sido visitada
-          if some_operation < 3 and buida and cases-plena = false and not visitada [
+          let xcor-temp2 xcor
+          let ycor-temp2 ycor
+          ;; Comprueba distancia, que este vacia la casa, que no haya escogido otra casa cercana ya(casa-plena), que no haya sido visitada, y que sea la casa que quiere visitar
+          if some_operation < 1 and buida and cases-plena = false and not visitada and casa-objectiu-temp = self[
             send-message (turtle-temp) "oferta" ticks
             set cases-plena true
             set buida false
-            print (word self "esta a aprop de " turtle-temp) ] ] ])
+            print (word self "esta a aprop de " turtle-temp) ]
+
+         ;; En el cas que ja estigui ple l'objectiu segueix endavant
+          if some_operation < 1 and not buida and cases-plena = false and not visitada and casa-objectiu-temp = self[
+            ask turtle-temp [
+              set objectiu objectiu-temp
+              set heading towardsxy xcor-temp2 ycor-temp2
+              set casa-objectiu casa-objectiu-temp
+              if llogada [
+                set cases-visitades lput una-casa cases-visitades
+              ]
+              set objectiu false
+            ] ]
+
+          ;;En el cas que no tingui cap aprop defineix un objectiu a distancia menor que 20
+          if some_operation > 1 and some_operation < 20 and buida and cases-plena = false and not visitada and not objectiu-temp [
+            set objectiu-temp true
+
+            set casa-objectiu-temp self
+            ask turtle-temp [
+              set objectiu objectiu-temp
+              set heading towardsxy xcor-temp2 ycor-temp2
+              set casa-objectiu casa-objectiu-temp
+            ]
+            print (word self "esta a aprop de " turtle-temp) ]
+      ] ])
       set inici-visites inici-visites-temp
       if cases-plena [set moviment false]
     ]
@@ -153,15 +190,26 @@ to process-message [sender kind message]
   if kind = "llogar" and tipo = "C" [
     activa-lloguer sender
   ]
+
+  if kind = "rebaixa" and tipo = "C" [
+    ofereix-preu-rebaixa sender message
+  ]
 ; if kind = "Pong" [
 ;   process-pong-message sender message
 ; ]
 end
 
-;; Ofereix el preu de la casa al comprador
+;; Ofereix el preu de la casa al llogater
 to ofereix-preu [sender]
   ask self[
       send-message sender "preu" preu-sou
+  ]
+end
+
+;; Ofereix el preu de la casa al llogater amb una rebaixa
+to ofereix-preu-rebaixa [sender message]
+  ask self[
+      send-message sender "preu" preu-sou * 0.85
   ]
 end
 
@@ -172,16 +220,25 @@ to comprova-preu [sender preu]
     ifelse preu < preu-sou
     [
      llogar-casa sender "Vull llogar"
+      set rebaixes 0
     ]
     [
-     set cases-visitades lput sender cases-visitades
-     print (word self cases-visitades)
-     set moviment true
-      ask sender[
-        print (word self)
-        set buida true
+      ifelse rebaixes < 3 [
+        set rebaixes rebaixes + 1
+        demanda-rebaixa sender preu-sou
       ]
-
+     [
+        set cases-visitades lput sender cases-visitades
+        print (word self cases-visitades)
+        set moviment true
+        set objectiu false
+        set casa-objectiu nobody
+        set rebaixes 0
+        ask sender[
+          print (word self)
+          set buida true
+        ]
+    ]
     ]
   ]
 end
@@ -194,8 +251,16 @@ end
 to activa-lloguer [sender]
   ask self[
     set buida false
+    set color red
     set llogater sender
+    set llogada true
   ]
+end
+
+;;Demanda de rebaixa, li enviem el sou
+to demanda-rebaixa [sender message]
+  send-message sender "rebaixa" message
+
 end
 
   ;; A los ofertas responem preguntant si esta buida
