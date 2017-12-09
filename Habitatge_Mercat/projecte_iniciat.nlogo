@@ -129,9 +129,26 @@ to move-llogaters
         ;; En cas de que estigui llogat anem reduint els mesos que li queden de contracte
         if canvi-mes = 1 [
           set mesos-contracte mesos-contracte - 1
+          ;; Si se li acaba el contracte
           if mesos-contracte = 0 [
-            alliberar-llogater llogater
-            alliberar-casa
+            let percentatge-llogades (cases-llogades) / (length cases)
+            if ( percentatge-llogades * 100 ) > 25 [
+              set preu-sou preu-fix + preu-fix * 0.05 * ( 1 / ( 1 - percentatge-llogades ) )
+            ]
+            ;;Comprovem si pot assumir el nou preu en funcio del mercat, en cas contrari el fem fora
+            let preu-temp preu-sou
+            let pot-assumir-preu false
+            ask llogater[
+              if preu-sou > preu-temp [
+                set pot-assumir-preu true
+              ]
+            ]
+            ifelse pot-assumir-preu [
+              set mesos-contracte 12
+            ] [
+              alliberar-llogater llogater
+              alliberar-casa
+            ]
           ]
         ]
       ]
@@ -438,10 +455,10 @@ NIL
 1
 
 MONITOR
-101
-187
-203
-232
+35
+93
+137
+138
 cases-lloguer
 cases-llogades
 17
