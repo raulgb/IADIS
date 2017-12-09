@@ -2,15 +2,16 @@
 
 De momento el programa hace:
 
-## 1.- Genera los diferentes tipos de agentes <br />
+## 1.- Genera los diferentes tipos de agentes
 ## 2.- Los caracteriza aleatoriamente
 
   - [ ] Faltaria definir cambios en el sueldo
   - [ ] Faltaria definir preferencias/características como: numero habitaciones, aire acondicionado, atico...
-## 3.- Permite alquilar casa <br />
-  - [ ] Faltaria poner temporizador en los usuarios para definir el tiempo que se pueden quedar
+## 3.- Permite alquilar casa
+  - [x] Faltaria poner temporizador en los usuarios para definir el tiempo que se pueden quedar
+  - [ ] Hay que definir que si sigue cobrando un sueldo mayor, se renueva el contrato
 ## 4.- Se implementan ciertas funcionalidades como: no volver a visitar casas ya visitadas
-  - [ ] Definir despues de cuanto tiempo puede volver a visitar una casa ya visitada que no se le fue otorgada o porque ya estaba alquilada o porque su sueldo no se lo permitia 
+  - [x] Definir despues de cuanto tiempo puede volver a visitar una casa ya visitada que no se le fue otorgada o porque ya estaba alquilada o porque su sueldo no se lo permitia 
 ## 5.- Negociacion: se permite negociar rebajas
   - [ ] Faltaria definir mas elementos como: definir la rebaja en funcion del sueldo
   - [ ] Si tuvieramos más caracterizaciones como possibles avales o así lo podríamos poner en la negociacion
