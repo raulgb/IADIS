@@ -2,6 +2,10 @@ globals [
   propietaris
   cases
   cases-llogades
+  cases-llogades-T
+  cases-llogades-A
+  cases-llogades-M
+  cases-llogades-B
   any
   mes
   canvi-mes
@@ -15,7 +19,7 @@ turtles-own [
   propietari       ;; En cas de ser una casa s'indica qui es el propietari
   buida            ;; si es casa hem de saber si esta plena o buida
   llogada          ;; Ens diu si esta llogada
-  preu-fix         ;; Preu fix del lloguer sobre el que s'opera
+  preu-sou-fix         ;; Preu fix del lloguer sobre el que s'opera
   preu-sou         ;; Preu o sou depenent de si es la casa o el llogater
   preu-lloguer     ;; Preu a pagar definitu
   llogater         ;; LLogater
@@ -25,9 +29,11 @@ turtles-own [
   objectiu         ;; Te casa a la que vol visitar
   casa-objectiu    ;; Casa objectiu
   rebaixes         ;; Numero d'intents de rebaixes o rebaixes fetes
-  classe           ;; Alta, "media", baja
+  classe           ;; Alta(A), "media"(M), baja(B), turista (T)
   mesos-contracte  ;; Definim el numero de mesos de contracte
   mesos-revisar-pis;; Mesos que queden per tornar a revisar cases
+  desocupat        ;; Si t'has quedat sense feina
+  contracte-feina  ;; Temporal o fix - [ 0=SENSE; 1=FIX; 2=TEMPORAL]
 ]
 
 to setup
@@ -36,36 +42,182 @@ to setup
   ;; Iniciem els propietaris i els posem a la llista de propietaris - 5 propietaris ostenten totes les cases
   set propietaris []
   set cases-llogades 0
+  set cases-llogades-T 0
+  set cases-llogades-A 0
+  set cases-llogades-M 0
+  set cases-llogades-B 0
   set dia 1
   set mes 1
   set canvi-mes 0
   set any 0
+
+  ;;Dividim el territori en 3 classes
+  ask patches [
+    ifelse pxcor >= 0  and pycor > 0[
+      set pcolor brown
+    ][
+      ifelse pxcor >= 0 and pycor <= 0[
+        set pcolor blue
+      ] [
+        set pcolor green
+      ]
+    ]
+  ]
+
   create-turtles 5 [
     set shape "box"
     set next-messages [] ;; Inicializamos las listas de mensajes recibidos
     setxy random-xcor random-ycor
     set tipo "P"
+    if color = brown or color = blue or color = green [
+      set color white
+    ]
+
     set propietaris lput self propietaris
   ]
 
-  ;; Iniciem els llogaters
-  create-turtles 100 [
+  ;; Iniciem els llogaters per classes
+
+  ;; A Espanya 75% de contractes fixes la resta temporal, font Eurostat
+  ;; Les dades d'idescat diuen que entre 16-64 anys el 80% de la poblacio treblla
+  ;; el 20% no, d'aqui la modelitzacio
+  ;; Per als de classe A posarem un 5% de desocupacio, nomes 2
+  let contador-desocupats 0
+  let contador-contracte 0
+  create-turtles 25 [
     set shape "person"
     set next-messages [] ;; Inicializamos las listas de mensajes recibidos
     setxy random-xcor random-ycor
     set tipo "L"
-    set preu-sou 500 + random 500
+    set preu-sou-fix 500 + random 500
     set moviment true
     set inici-visites false
     set objectiu false
     set cases-visitades []
     set rebaixes 0
     set mesos-revisar-pis 12
+    set classe "A"
+    ifelse contador-desocupats < (25 * 0.05 ) [
+      set desocupat true
+      set contracte-feina 0
+      set contador-desocupats contador-desocupats + 1
+    ][
+
+      ifelse contador-contracte < (50 * 0.75 ) [
+        set contracte-feina 1
+        set contador-contracte contador-contracte + 1
+      ][
+        set contracte-feina 2
+      ]
+      set desocupat false
+    ]
+    ifelse desocupat [
+      set preu-sou 0
+    ][
+      ;; Multipliquem per 3 perque son classe alta
+      set preu-sou preu-sou-fix * 3
+    ]
+  ]
+  ;; El 25% desocupats serien 13 aprox.
+  set contador-desocupats 0
+  set contador-contracte 0
+  create-turtles 50 [
+    set shape "person"
+    set next-messages [] ;; Inicializamos las listas de mensajes recibidos
+    setxy random-xcor random-ycor
+    set tipo "L"
+    set preu-sou-fix 500 + random 500
+    set moviment true
+    set inici-visites false
+    set objectiu false
+    set cases-visitades []
+    set rebaixes 0
+    set mesos-revisar-pis 12
+    set classe "M"
+    ifelse contador-desocupats < (50 * 0.25 ) [
+      set desocupat true
+      set contracte-feina 0
+      set contador-desocupats contador-desocupats + 1
+    ][
+
+      ifelse contador-contracte < (50 * 0.75 ) [
+        set contracte-feina 1
+        set contador-contracte contador-contracte + 1
+      ][
+        set contracte-feina 2
+      ]
+      set desocupat false
+    ]
+    ifelse desocupat [
+      set preu-sou 0
+    ][
+      ;; Multipliquem per 2 perque son classe "media"
+      set preu-sou preu-sou-fix * 2
+    ]
   ]
 
-  ;;Iniciem les cases que tenen uns propietaris que son alguns dels d'abans
+  ;; El 50% desocupats serien 13 aprox.
+  set contador-desocupats 0
+  set contador-contracte 0
+  create-turtles 25 [
+    set shape "person"
+    set next-messages [] ;; Inicializamos las listas de mensajes recibidos
+    setxy random-xcor random-ycor
+    set tipo "L"
+    set preu-sou-fix 500 + random 500
+    set moviment true
+    set inici-visites false
+    set objectiu false
+    set cases-visitades []
+    set rebaixes 0
+    set mesos-revisar-pis 12
+    set classe "B"
+    ifelse contador-desocupats < (25 * 0.5 ) [
+      set desocupat true
+      set contracte-feina 0
+      set contador-desocupats contador-desocupats + 1
+    ][
+
+    ifelse contador-contracte < (25 * 0.75 ) [
+      set contracte-feina 1
+      set contador-contracte contador-contracte + 1
+    ][
+      set contracte-feina 2
+    ]
+      set desocupat false
+    ]
+
+    ifelse desocupat [
+      set preu-sou 0
+    ][
+      ;;El no es multiplica perque son els que menys cobren
+      set preu-sou preu-sou-fix
+    ]
+  ]
+
+;; Iniciem els llogaters - turistes 25% dels que busquen lloguer
+  create-turtles 25 [
+    set shape "person"
+    set next-messages [] ;; Inicializamos las listas de mensajes recibidos
+    setxy random-xcor random-ycor
+    set tipo "L"
+    set preu-sou-fix 500 + random 500
+    set moviment true
+    set inici-visites false
+    set objectiu false
+    set cases-visitades []
+    set rebaixes 0
+    set mesos-revisar-pis 12
+    set classe "T"
+    ;; Multipliquem per 3 perque son classe alta
+    set preu-sou preu-sou-fix * 3
+
+  ]
+
+  ;;Iniciem les cases que tenen uns propietaris que son alguns dels d'abans,
+  ;; per classes
   set cases []
-  create-turtles 100 [
+  create-turtles 25 [
     set shape "house"
     set color white
     set next-messages [] ;; Inicializamos las listas de mensajes recibidos
@@ -76,8 +228,56 @@ to setup
     set buida true
     set llogater nobody
     set llogada false
-    set preu-fix 500 + random 500
-    set preu-sou preu-fix
+    set preu-sou-fix 500 + random 500
+    set preu-sou preu-sou-fix
+    set classe "A"
+  ]
+    create-turtles 50 [
+    set shape "house"
+    set color white
+    set next-messages [] ;; Inicializamos las listas de mensajes recibidos
+    setxy random-xcor random-ycor
+
+    if xcor >= 0  and ycor > 0[
+      set xcor xcor * -1
+      set ycor ycor * -1
+    ]
+    if xcor >= 0  and ycor <= 0[
+      set xcor xcor * -1
+      set ycor ycor * -1
+    ]
+    set tipo "C"
+    set propietari item (random 5) propietaris    ;; random 5 pels 5 propietaris
+    set cases lput self cases
+    set buida true
+    set llogater nobody
+    set llogada false
+    set preu-sou-fix 500 + random 500
+    set preu-sou preu-sou-fix
+    set classe "M"
+  ]
+    create-turtles 25 [
+    set shape "house"
+    set color white
+    set next-messages [] ;; Inicializamos las listas de mensajes recibidos
+    setxy random-xcor random-ycor
+    if xcor < 0 [
+      set xcor xcor * -1
+    ]
+    if ycor < 0 [
+      set ycor ycor * -1
+    ]
+
+    set tipo "C"
+    set propietari item (random 5) propietaris    ;; random 5 pels 5 propietaris
+    set cases lput self cases
+    set buida true
+    set llogater nobody
+    set llogada false
+    set preu-sou-fix 500 + random 500
+    ;; Com es una casa de classe baixa
+    set preu-sou preu-sou-fix
+    set classe "B"
   ]
 end
 
@@ -123,7 +323,7 @@ to move-llogaters
       ifelse llogater = nobody [
         let percentatge-llogades (cases-llogades) / (length cases)
          if ( percentatge-llogades * 100 ) > 25 [
-          set preu-sou preu-fix + preu-fix * 0.05 * ( 1 / ( 1 - percentatge-llogades ) )
+          set preu-sou preu-sou-fix + preu-sou-fix * 0.05 * ( 1 / ( 1 - percentatge-llogades ) )
         ]
       ] [
         ;; En cas de que estigui llogat anem reduint els mesos que li queden de contracte
@@ -133,7 +333,7 @@ to move-llogaters
           if mesos-contracte = 0 [
             let percentatge-llogades (cases-llogades) / (length cases)
             if ( percentatge-llogades * 100 ) > 25 [
-              set preu-sou preu-fix + preu-fix * 0.05 * ( 1 / ( 1 - percentatge-llogades ) )
+              set preu-sou preu-sou-fix + preu-sou-fix * 0.05 * ( 1 / ( 1 - percentatge-llogades ) )
             ]
             ;;Comprovem si pot assumir el nou preu en funcio del mercat, en cas contrari el fem fora
             let preu-temp preu-sou
@@ -184,7 +384,7 @@ to send-messages
     if tipo = "L" [
       let xcor-temp xcor
       let ycor-temp ycor
-      let turtle-temp self
+      let llogater-temp self
       let cases-plena false
       let inici-visites-temp inici-visites
       let cases-visitades-temp cases-visitades
@@ -212,21 +412,23 @@ to send-messages
           let ycor-temp2 ycor
           ;; Comprueba distancia, que este vacia la casa, que no haya escogido otra casa cercana ya(casa-plena), que no haya sido visitada, y que sea la casa que quiere visitar
           if some_operation < 1 and buida and cases-plena = false and not visitada and casa-objectiu-temp = self[
-            send-message (turtle-temp) "oferta" ticks
+            send-message (llogater-temp) "oferta" ticks
             set cases-plena true
             set buida false
-            print (word self "esta a aprop de " turtle-temp) ]
+            print (word self "esta a aprop de " llogater-temp) ]
 
          ;; En el cas que ja estigui ple l'objectiu segueix endavant
           if some_operation < 1 and not buida and cases-plena = false and not visitada and casa-objectiu-temp = self[
-            ask turtle-temp [
+            ask llogater-temp [
               set objectiu objectiu-temp
               set heading towardsxy xcor-temp2 ycor-temp2
-              set casa-objectiu casa-objectiu-temp
               if llogater != nobody [
                 set cases-visitades lput una-casa cases-visitades
               ]
               set objectiu-temp false
+              set objectiu objectiu-temp
+              set casa-objectiu-temp nobody
+              set casa-objectiu casa-objectiu-temp
             ] ]
 
           ;;En el cas que no tingui cap aprop defineix un objectiu a distancia menor que 20
@@ -234,12 +436,12 @@ to send-messages
             set objectiu-temp true
 
             set casa-objectiu-temp self
-            ask turtle-temp [
+            ask llogater-temp [
               set objectiu objectiu-temp
               set heading towardsxy xcor-temp2 ycor-temp2
               set casa-objectiu casa-objectiu-temp
             ]
-            print (word self "esta a aprop de " turtle-temp) ]
+          ]
       ] ])
       set inici-visites inici-visites-temp
       if cases-plena [set moviment false]
@@ -325,6 +527,21 @@ end
 ;; Quan un llogater s'enva reestablim certs valors
 to alliberar-casa
   ask self[
+    ask llogater[
+      ifelse classe = "T" [
+        set cases-llogades-T cases-llogades-T - 1
+      ][
+       ifelse classe = "A" [
+          set cases-llogades-A cases-llogades-A - 1
+        ][
+          ifelse classe = "M" [
+            set cases-llogades-M cases-llogades-M - 1
+          ][
+            set cases-llogades-B cases-llogades-B - 1
+          ]
+        ]
+      ]
+    ]
     set buida true
     set llogater nobody
     set llogada false
@@ -364,6 +581,22 @@ to activa-lloguer [sender]
     set color red
     set llogater sender
     set llogada true
+
+    ask llogater[
+      ifelse classe = "T" [
+        set cases-llogades-T cases-llogades-T + 1
+      ][
+       ifelse classe = "A" [
+          set cases-llogades-A cases-llogades-A + 1
+        ][
+          ifelse classe = "M" [
+            set cases-llogades-M cases-llogades-M + 1
+          ][
+            set cases-llogades-B cases-llogades-B + 1
+          ]
+        ]
+      ]
+    ]
     set cases-llogades cases-llogades + 1
   ]
 end
@@ -461,6 +694,50 @@ MONITOR
 138
 cases-lloguer
 cases-llogades
+17
+1
+11
+
+MONITOR
+64
+197
+188
+242
+Turistes-ocupats
+cases-llogades-T
+17
+1
+11
+
+MONITOR
+46
+267
+171
+312
+ClasseA-Ocupats
+cases-llogades-A
+17
+1
+11
+
+MONITOR
+44
+322
+171
+367
+ClasseM-Ocupats
+cases-llogades-M
+17
+1
+11
+
+MONITOR
+44
+377
+170
+422
+ClasseB-Ocupats
+cases-llogades-B
 17
 1
 11
