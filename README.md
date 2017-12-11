@@ -6,7 +6,7 @@ De momento el programa hace:
 ## 2.- Los caracteriza aleatoriamente
 
   - [ ] Faltaria definir cambios en el sueldo
-  - [ ] Faltaria definir preferencias/características como: numero habitaciones, aire acondicionado, atico...
+  - [ ] Faltaria definir preferencias/características como: numero habitaciones, aire acondicionado, atico, contrato fijo/temporal...
 ## 3.- Permite alquilar casa
   - [x] Faltaria poner temporizador en los usuarios para definir el tiempo que se pueden quedar
   - [x] Hay que definir que si sigue cobrando un sueldo mayor, se renueva el contrato
