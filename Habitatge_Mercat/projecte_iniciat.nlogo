@@ -10,6 +10,7 @@ globals [
   mes
   canvi-mes
   dia
+  bolsa-mercado
 ]
 
 turtles-own [
@@ -21,6 +22,8 @@ turtles-own [
   llogada          ;; Ens diu si esta llogada
   preu-sou-fix         ;; Preu fix del lloguer sobre el que s'opera
   preu-sou         ;; Preu o sou depenent de si es la casa o el llogater
+  sou-desitjat     ;; Sou que desitja que tingui el llogater
+  sou-pref         ;; Preferencia sou
   preu-lloguer     ;; Preu a pagar definitu
   llogater         ;; LLogater
   moviment         ;; Preu o sou depenent de si es la casa o el llogater
@@ -30,10 +33,15 @@ turtles-own [
   casa-objectiu    ;; Casa objectiu
   rebaixes         ;; Numero d'intents de rebaixes o rebaixes fetes
   classe           ;; Alta(A), "media"(M), baja(B), turista (T)
+  multiplicador    ;; Depenent de la classe ara farem per llogater-casa: A-> (3-2.5),M->(2-1.5),B->(1-0.5)
   mesos-contracte  ;; Definim el numero de mesos de contracte
   mesos-revisar-pis;; Mesos que queden per tornar a revisar cases
   desocupat        ;; Si t'has quedat sense feina
   contracte-feina  ;; Temporal o fix - [ 0=SENSE; 1=FIX; 2=TEMPORAL]
+  contracte-pref   ;; Preferencia sobre el contracte de feina
+  diners           ;; Se va acumulando el dinero o perdiendo dependiendo
+  pagament-avancat ;; Mesos que s'han de pagar per avançat, entre 3-6 mesos ho definirem
+  tot-correcte     ;; Tenim totes les dades i pot pagar els mesos d'avançat
 ]
 
 to setup
@@ -41,6 +49,7 @@ to setup
   reset-ticks
   ;; Iniciem els propietaris i els posem a la llista de propietaris - 5 propietaris ostenten totes les cases
   set propietaris []
+  set bolsa-mercado 0
   set cases-llogades 0
   set cases-llogades-T 0
   set cases-llogades-A 0
@@ -74,6 +83,16 @@ to setup
     ]
 
     set propietaris lput self propietaris
+    set diners 0
+    ;; Definim preferencies i obligacionsdels propietaris
+    ;;Preferencies
+    set contracte-feina (random 2)  + 1     ;; Tipus de contracte que prefereix FIX si es 1 i no li importa si es 2, sempre
+                                            ;; Ha de tenir contracte per ser acceptat
+    set contracte-pref (random 5) / 5       ;; Balanceig de la preferencia per cada propietari diferent 20,40,60,80
+    set sou-desitjat (random 2500) + 500    ;; Defineix un sou entre 500 i 3000, que es el maxim
+    set sou-pref 1 - contracte-pref         ;; Perque nomes tindrem dos preferencies definides
+    ;;Obligacoins
+    set pagament-avancat 3 + random 3
   ]
 
   ;; Iniciem els llogaters per classes
@@ -95,8 +114,9 @@ to setup
     set objectiu false
     set cases-visitades []
     set rebaixes 0
-    set mesos-revisar-pis 12
+    set mesos-revisar-pis 24
     set classe "A"
+    set multiplicador 3
     ifelse contador-desocupats < (25 * 0.05 ) [
       set desocupat true
       set contracte-feina 0
@@ -117,6 +137,7 @@ to setup
       ;; Multipliquem per 3 perque son classe alta
       set preu-sou preu-sou-fix * 3
     ]
+    set diners 0
   ]
   ;; El 25% desocupats serien 13 aprox.
   set contador-desocupats 0
@@ -132,8 +153,9 @@ to setup
     set objectiu false
     set cases-visitades []
     set rebaixes 0
-    set mesos-revisar-pis 12
+    set mesos-revisar-pis 24
     set classe "M"
+    set multiplicador 2
     ifelse contador-desocupats < (50 * 0.25 ) [
       set desocupat true
       set contracte-feina 0
@@ -154,6 +176,7 @@ to setup
       ;; Multipliquem per 2 perque son classe "media"
       set preu-sou preu-sou-fix * 2
     ]
+    set diners 0
   ]
 
   ;; El 50% desocupats serien 13 aprox.
@@ -170,8 +193,9 @@ to setup
     set objectiu false
     set cases-visitades []
     set rebaixes 0
-    set mesos-revisar-pis 12
+    set mesos-revisar-pis 24
     set classe "B"
+    set multiplicador 1
     ifelse contador-desocupats < (25 * 0.5 ) [
       set desocupat true
       set contracte-feina 0
@@ -193,6 +217,7 @@ to setup
       ;;El no es multiplica perque son els que menys cobren
       set preu-sou preu-sou-fix
     ]
+    set diners 0
   ]
 
 ;; Iniciem els llogaters - turistes 25% dels que busquen lloguer
@@ -207,15 +232,15 @@ to setup
     set objectiu false
     set cases-visitades []
     set rebaixes 0
-    set mesos-revisar-pis 12
+    set mesos-revisar-pis 24
     set classe "T"
+    set multiplicador 3
     ;; Multipliquem per 3 perque son classe alta
     set preu-sou preu-sou-fix * 3
-
+    set diners 0
   ]
 
-  ;;Iniciem les cases que tenen uns propietaris que son alguns dels d'abans,
-  ;; per classes
+  ;;Iniciem les cases que tenen uns propietaris i les dividim per classes
   set cases []
   create-turtles 25 [
     set shape "house"
@@ -234,9 +259,11 @@ to setup
     set buida true
     set llogater nobody
     set llogada false
-    set preu-sou-fix 500 + random 500
+    ;; Preu en funcio de la classe de casa, Alta
+    set preu-sou-fix (500 + random 500) * 2.5
     set preu-sou preu-sou-fix
     set classe "A"
+    set tot-correcte false
   ]
     create-turtles 50 [
     set shape "house"
@@ -258,9 +285,11 @@ to setup
     set buida true
     set llogater nobody
     set llogada false
-    set preu-sou-fix 500 + random 500
+    ;; Preu en funcio de la classe de casa, Mitjana
+    set preu-sou-fix (500 + random 500) * 1.5
     set preu-sou preu-sou-fix
     set classe "M"
+    set tot-correcte false
   ]
     create-turtles 25 [
     set shape "house"
@@ -280,10 +309,12 @@ to setup
     set buida true
     set llogater nobody
     set llogada false
-    set preu-sou-fix 500 + random 500
+    ;; Preu en funcio de la classe de casa, Baixa
+    set preu-sou-fix (500 + random 500) * 0.5
     ;; Com es una casa de classe baixa
     set preu-sou preu-sou-fix
     set classe "B"
+    set tot-correcte false
   ]
 end
 
@@ -317,11 +348,35 @@ to move-llogaters
     if tipo = "L" and moviment [
       ;; Revisem els pisos que ja haviem mirat fa temps
       if canvi-mes = 1[
+        set diners (diners + preu-sou)
+        print (word self diners)
         set mesos-revisar-pis mesos-revisar-pis - 1
         if mesos-revisar-pis = 0 [
-          set mesos-revisar-pis 12
+          set mesos-revisar-pis 24
           borrar-llista
         ]
+        ;; Definimos la posibilidad de que encuentre trabajo como un 10% i de que los despidan/fin-contrato tambien
+        ;; Pels turistes no
+        if classe != "T"[
+          let canvi-treball random 100
+          if canvi-treball < 10 [
+            ;; Si esta a l'atur el contracten, si no el despedeixen
+            ifelse desocupat [
+              set desocupat false
+              set preu-sou preu-sou-fix * multiplicador
+              ;; La majoria dels nous contractes son temporals aqui ho definim com el 50% dels nous treballs
+              let tipus-contracte random 2
+              ifelse tipus-contracte = 0 [
+                set contracte-feina 1
+              ][
+                set contracte-feina 2
+              ]
+            ] [
+              set desocupat true
+              set preu-sou 0
+            ]
+          ]
+      ]
       ]
       ;; Fem una pasa
       fd 1]
@@ -335,17 +390,38 @@ to move-llogaters
         ;; En cas de que estigui llogat anem reduint els mesos que li queden de contracte
         if canvi-mes = 1 [
           set mesos-contracte mesos-contracte - 1
+          ;;Comprovem si pot assumir pagar el mes en cas contrari el fem fora
+          let preu-temp preu-lloguer
+          let pot-assumir-preu false
+          ask llogater[
+            if diners > preu-temp [
+              ;;Li treiem els diners que li costa pagar el pis i definim que ho ha pogut pagar
+              set diners diners - preu-temp
+              set pot-assumir-preu true
+            ]
+          ]
+          ifelse pot-assumir-preu [
+            ;; Sumem els diners al propietari i a la bolsa del mercat
+            ask propietari [
+              set diners diners + (preu-temp * 0.99)
+              set bolsa-mercado bolsa-mercado + (preu-temp * 0.01)
+            ]
+          ] [
+            alliberar-llogater llogater
+            alliberar-casa
+          ]
           ;; Si se li acaba el contracte
-          if mesos-contracte = 0 [
+          if mesos-contracte = 0 and pot-assumir-preu[
             let percentatge-llogades (cases-llogades) / (length cases)
             if ( percentatge-llogades * 100 ) > 25 [
               set preu-sou preu-sou-fix + preu-sou-fix * 0.05 * ( 1 / ( 1 - percentatge-llogades ) )
             ]
             ;;Comprovem si pot assumir el nou preu en funcio del mercat, en cas contrari el fem fora
-            let preu-temp preu-sou
-            let pot-assumir-preu false
+            set preu-temp preu-sou
+            set pot-assumir-preu false
             ask llogater[
               if preu-sou > preu-temp [
+                ;;Li treiem els diners que li costa pagar el pis i definim que ho ha pogut pagar
                 set pot-assumir-preu true
               ]
             ]
@@ -396,59 +472,65 @@ to send-messages
       let cases-visitades-temp cases-visitades
       let objectiu-temp objectiu
       let casa-objectiu-temp casa-objectiu
+      let classe-llogater classe
       ;; Comprovem si passen aprop d'una casa
+      set cases shuffle cases
      (foreach cases
         [ [una-casa] -> ask una-casa [
-
-          ;;Primero comprueba que no la haya visitado
-          let visitada false
-          ifelse inici-visites-temp [
-            foreach cases-visitades-temp [casa-visitada ->
-              if casa-visitada = una-casa [
-                set visitada true
+        ;; Si es de classe alta no voldra comprar de classe baixa,
+        ;; nomes esta disposat a comprar de classe mitja o alta
+        ;; Al turista li es igual i als altres tambe
+        if classe-llogater != "A" or classe != "B" [
+            ;;Primero comprueba que no la haya visitado
+            let visitada false
+            ifelse inici-visites-temp [
+              foreach cases-visitades-temp [casa-visitada ->
+                if casa-visitada = una-casa [
+                  set visitada true
+                ]
               ]
+            ] [
+              ;; Inicializa la lista de casas visitadas
+              set inici-visites-temp true
             ]
-          ] [
-            ;; Inicializa la lista de casas visitadas
-            set inici-visites-temp true
-          ]
 
-          let some_operation (((xcor - xcor-temp) * (xcor - xcor-temp) + (ycor - ycor-temp) * (ycor - ycor-temp) ) ^ (1 / 2))
-          let xcor-temp2 xcor
-          let ycor-temp2 ycor
-          ;; Comprueba distancia, que este vacia la casa, que no haya escogido otra casa cercana ya(casa-plena), que no haya sido visitada, y que sea la casa que quiere visitar
-          if some_operation < 1 and buida and cases-plena = false and not visitada and casa-objectiu-temp = self[
-            send-message (llogater-temp) "oferta" ticks
-            set cases-plena true
-            set buida false
-            print (word self "esta a aprop de " llogater-temp) ]
+            let some_operation (((xcor - xcor-temp) * (xcor - xcor-temp) + (ycor - ycor-temp) * (ycor - ycor-temp) ) ^ (1 / 2))
+            let xcor-temp2 xcor
+            let ycor-temp2 ycor
+            ;; Comprueba distancia, que este vacia la casa, que no haya escogido otra casa cercana ya(casa-plena), que no haya sido visitada, y que sea la casa que quiere visitar
+            if some_operation < 1 and buida and cases-plena = false and not visitada and casa-objectiu-temp = self[
+              send-message (llogater-temp) "oferta" ticks
+              set cases-plena true
+              set buida false
+              print (word self "esta a aprop de " llogater-temp) ]
 
-         ;; En el cas que ja estigui ple l'objectiu segueix endavant
-          if some_operation < 1 and not buida and cases-plena = false and not visitada and casa-objectiu-temp = self[
-            ask llogater-temp [
-              set objectiu objectiu-temp
-              set heading towardsxy xcor-temp2 ycor-temp2
-              if llogater != nobody [
-                set cases-visitades lput una-casa cases-visitades
-              ]
-              set objectiu-temp false
-              set objectiu objectiu-temp
-              set casa-objectiu-temp nobody
-              set casa-objectiu casa-objectiu-temp
+            ;; En el cas que ja estigui ple l'objectiu segueix endavant
+            if some_operation < 1 and not buida and cases-plena = false and not visitada and casa-objectiu-temp = self[
+              ask llogater-temp [
+                set objectiu objectiu-temp
+                set heading towardsxy xcor-temp2 ycor-temp2
+                if llogater != nobody [
+                  set cases-visitades lput una-casa cases-visitades
+                ]
+                set objectiu-temp false
+                set objectiu objectiu-temp
+                set casa-objectiu-temp nobody
+                set casa-objectiu casa-objectiu-temp
             ] ]
 
-          ;;En el cas que no tingui cap aprop defineix un objectiu a distancia menor que 20
-          if some_operation > 1 and some_operation < 20 and buida and cases-plena = false and not visitada and not objectiu-temp [
-            set objectiu-temp true
+            ;;En el cas que no tingui cap aprop defineix un objectiu a distancia menor que 20
+            if some_operation > 1 and some_operation < 20 and buida and cases-plena = false and not visitada and not objectiu-temp [
+              set objectiu-temp true
 
-            set casa-objectiu-temp self
-            ask llogater-temp [
-              set objectiu objectiu-temp
-              set heading towardsxy xcor-temp2 ycor-temp2
-              set casa-objectiu casa-objectiu-temp
+              set casa-objectiu-temp self
+              ask llogater-temp [
+                set objectiu objectiu-temp
+                set heading towardsxy xcor-temp2 ycor-temp2
+                set casa-objectiu casa-objectiu-temp
+              ]
             ]
           ]
-      ] ])
+      ]])
       set inici-visites inici-visites-temp
       if cases-plena [set moviment false]
     ]
@@ -467,12 +549,22 @@ to process-message [sender kind message]
    comprova-preu sender message
   ]
 
+  if kind = "pagament-avancat" and tipo = "L" [
+
+  ]
+
   ;; PER CASES
   if kind = "buida" and tipo = "C"
     [ofereix-preu sender]
-
+  ;; Comprova si tot correcte
   if kind = "llogar" and tipo = "C" [
+
     activa-lloguer sender
+  ]
+
+  if kind = "pagar-avancat" and tipo = "C" [
+    ;;activa-lloguer sender
+
   ]
 
   if kind = "rebaixa" and tipo = "C" [
@@ -556,7 +648,20 @@ to alliberar-casa
   ]
 end
 
+;;
+
 ;; Alliberar llogater
+;; Per alliberarlo quan esta intentant llogar
+to alliberar-llogater-reservant [llogater-temp]
+  ask llogater-temp[
+    set moviment true
+    set inici-visites false
+    set objectiu false
+    set rebaixes 0
+  ]
+end
+
+;; Per alliberarlo quan esta llogant
 to alliberar-llogater [llogater-temp]
   ask llogater-temp[
     set moviment true
@@ -564,7 +669,7 @@ to alliberar-llogater [llogater-temp]
     set objectiu false
     set cases-visitades []
     set rebaixes 0
-    set mesos-revisar-pis 12
+    set mesos-revisar-pis 24
   ]
 end
 ;; Lloga casa
