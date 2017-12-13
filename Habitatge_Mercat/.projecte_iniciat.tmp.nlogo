@@ -6,6 +6,9 @@ globals [
   cases-llogades-A
   cases-llogades-M
   cases-llogades-B
+  desocupat-A
+  desocupat-M
+  desocupat-B
   any
   mes
   canvi-mes
@@ -42,6 +45,7 @@ turtles-own [
   diners           ;; Se va acumulando el dinero o perdiendo dependiendo
   pagament-avancat ;; Mesos que s'han de pagar per avançat, entre 3-6 mesos ho definirem
   tot-correcte     ;; Tenim totes les dades i pot pagar els mesos d'avançat
+  puntuacio-client ;; Puntuacio en una negoaciacio
 ]
 
 to setup
@@ -103,6 +107,7 @@ to setup
   ;; Per als de classe A posarem un 5% de desocupacio, nomes 2
   let contador-desocupats 0
   let contador-contracte 0
+  set desocupat-A 0
   create-turtles 25 [
     set shape "person"
     set next-messages [] ;; Inicializamos las listas de mensajes recibidos
@@ -132,6 +137,7 @@ to setup
       set desocupat false
     ]
     ifelse desocupat [
+      set desocupat-A desocupat-A + 1
       set preu-sou 0
     ][
       ;; Multipliquem per 3 perque son classe alta
@@ -142,6 +148,7 @@ to setup
   ;; El 25% desocupats serien 13 aprox.
   set contador-desocupats 0
   set contador-contracte 0
+  set desocupat-M 0
   create-turtles 50 [
     set shape "person"
     set next-messages [] ;; Inicializamos las listas de mensajes recibidos
@@ -171,6 +178,7 @@ to setup
       set desocupat false
     ]
     ifelse desocupat [
+      set desocupat-M desocupat-M + 1
       set preu-sou 0
     ][
       ;; Multipliquem per 2 perque son classe "media"
@@ -182,6 +190,7 @@ to setup
   ;; El 50% desocupats serien 13 aprox.
   set contador-desocupats 0
   set contador-contracte 0
+  set desocupat-B 0
   create-turtles 25 [
     set shape "person"
     set next-messages [] ;; Inicializamos las listas de mensajes recibidos
@@ -212,6 +221,7 @@ to setup
     ]
 
     ifelse desocupat [
+      set desocupat-B desocupat-B + 1
       set preu-sou 0
     ][
       ;;El no es multiplica perque son els que menys cobren
@@ -263,6 +273,7 @@ to setup
     set preu-sou-fix (500 + random 500) * 2.5
     set preu-sou preu-sou-fix
     set classe "A"
+    set tot-correcte false
   ]
     create-turtles 50 [
     set shape "house"
@@ -344,13 +355,13 @@ end
 
 to move-llogaters
   ask turtles [
-    if tipo = "L" and moviment [
+    if tipo = "L" [
       ;; Revisem els pisos que ja haviem mirat fa temps
       if canvi-mes = 1[
         set diners (diners + preu-sou)
-        print (word self diners)
+        ;; print (word self diners)
         set mesos-revisar-pis mesos-revisar-pis - 1
-        if mesos-revisar-pis = 0 [
+        if mesos-revisar-pis = 0 and moviment[
           set mesos-revisar-pis 24
           borrar-llista
         ]
@@ -371,14 +382,46 @@ to move-llogaters
                 set contracte-feina 2
               ]
             ] [
-              set desocupat true
-              set preu-sou 0
+              ;; Si te contracte fix no el despedeix
+              if contracte-feina = 2 [
+                set desocupat true
+                set preu-sou 0
+              ]
+            ]
+
+            ;; Si canvian de trabajo augmentamos o no los monitores
+            if classe = "A" and contracte-feina != 1[
+              ifelse desocupat [
+                set desocupat-A desocupat-A + 1
+              ][
+                set desocupat-A desocupat-A - 1
+              ]
+            ]
+
+            if classe = "M" and contracte-feina != 1[
+              ifelse desocupat [
+                set desocupat-M desocupat-M + 1
+              ][
+                set desocupat-M desocupat-M - 1
+              ]
+            ]
+
+
+            if classe = "B" and contracte-feina != 1[
+              ifelse desocupat [
+                set desocupat-B desocupat-B + 1
+              ][
+                set desocupat-B desocupat-B - 1
+              ]
             ]
           ]
       ]
       ]
       ;; Fem una pasa
-      fd 1]
+      if moviment [
+       fd 1]
+
+    ]
     if tipo = "C" [
       ifelse llogater = nobody [
         let percentatge-llogades (cases-llogades) / (length cases)
@@ -402,8 +445,8 @@ to move-llogaters
           ifelse pot-assumir-preu [
             ;; Sumem els diners al propietari i a la bolsa del mercat
             ask propietari [
-              set diners diners + (preu-temp * 0.99)
-              set bolsa-mercado bolsa-mercado + (preu-temp * 0.01)
+              set diners diners - 10  + (preu-temp * 0.99)
+              set bolsa-mercado bolsa-mercado + 10  + (preu-temp * 0.01)
             ]
           ] [
             alliberar-llogater llogater
@@ -501,7 +544,8 @@ to send-messages
               send-message (llogater-temp) "oferta" ticks
               set cases-plena true
               set buida false
-              print (word self "esta a aprop de " llogater-temp) ]
+              ;; print (word self "esta a aprop de " llogater-temp)
+            ]
 
             ;; En el cas que ja estigui ple l'objectiu segueix endavant
             if some_operation < 1 and not buida and cases-plena = false and not visitada and casa-objectiu-temp = self[
@@ -549,21 +593,48 @@ to process-message [sender kind message]
   ]
 
   if kind = "pagament-avancat" and tipo = "L" [
+    send-message sender "pagar-avancat" diners
 
+  ]
+
+  if kind = "demanda-contracte" and tipo = "L" [
+    send-message sender "contracte-llogater" contracte-feina
+
+  ]
+
+  if kind = "demanda-sou" and tipo = "L" [
+    send-message sender "sou-llogater" preu-sou
+
+  ]
+
+  if kind = "fin-negociacio" and tipo = "L" [
+    alliberar-llogater-reservant self
   ]
 
   ;; PER CASES
   if kind = "buida" and tipo = "C"
     [ofereix-preu sender]
-
-  if kind = "llogar" and tipo = "C" [
-
+  ;; Comprova si tot correcte
+  ifelse kind = "llogar" and tipo = "C" and tot-correcte [
     activa-lloguer sender
+  ] [
+    if  kind = "llogar" and tipo = "C" and not tot-correcte [
+      demanda-diners sender
+    ]
+  ]
+
+
+  if kind = "contracte-llogater" and tipo = "C" [
+      comprova-contracte sender message
+  ]
+
+
+  if kind = "sou-llogater" and tipo = "C" [
+      comprova-sou sender message
   ]
 
   if kind = "pagar-avancat" and tipo = "C" [
-    activa-lloguer sender
-
+      comprovem-si-tot-correcte sender message
   ]
 
   if kind = "rebaixa" and tipo = "C" [
@@ -581,6 +652,77 @@ to ofereix-preu [sender]
   ]
 end
 
+
+
+;; Iniciem la demanda de certes caracteristiques del comprador per decidir si el volem o volem un altre
+to demanda-diners [sender]
+  send-message sender "pagament-avancat" "NoMessage"
+end
+
+;; Comprovem si amb els diners que diu que te pot pagar els 3-6 mesos per adelantat,
+;; Mes un del mes actual, si es aixi li cobrarem 3-6 mesos quan es firmi el contracte
+to comprovem-si-tot-correcte [sender diners-temp]
+  ask self[
+    let pagament-avancat-temp 0
+    ask propietari [
+      set pagament-avancat-temp pagament-avancat
+    ]
+    ;; Definim quans diners ha de disposar per poder entrar a la casa a part de tenir un sou X
+    ifelse diners-temp > (preu-lloguer * (pagament-avancat + 1))[
+      send-message sender "demanda-contracte" "NoMessage"
+    ] [
+        send-message sender "fin-negociacio" "NoMessage"
+        set buida true
+    ]
+  ]
+end
+
+to comprova-contracte [sender contracte]
+  ask self [
+    ;; Iniciem la puntuacio del client a 0
+    set puntuacio-client 0
+    let puntuacio-client-temp puntuacio-client
+    ask propietari[
+      ;;Depenent del contracte modifiquem la puntuacio
+      ifelse contracte = 1 and contracte-feina = 1[
+        set puntuacio-client-temp contracte-pref
+      ][
+        ifelse contracte = 2 and contracte-feina = 1[
+          set puntuacio-client-temp contracte-pref * 0.5
+        ][
+          if contracte-feina = 1[
+            set puntuacio-client-temp contracte-pref
+          ]
+        ]
+      ]
+    ]
+    set puntuacio-client puntuacio-client-temp
+    ;;activa-lloguer sender
+    send-message sender "demanda-sou" "NoMessage"
+  ]
+
+end
+
+to comprova-sou [sender sou]
+  ask self [
+
+    let puntuacio-client-temp puntuacio-client
+    ask propietari [
+    ;;Depenent del sou modifiquem la puntuacio
+      ifelse sou-desitjat >= sou [
+      set puntuacio-client-temp puntuacio-client-temp + ((sou / sou-desitjat) * sou-pref)
+      ] [
+        ;; En caso de que cobre mas que el sueldo deseado por el propietario
+      set puntuacio-client-temp puntuacio-client-temp + (sou-pref)
+      ]
+    ]
+    set puntuacio-client puntuacio-client-temp
+    activa-lloguer sender
+    print (word self " puntua a " sender " aixi: " puntuacio-client)
+  ]
+
+end
+
 ;; Ofereix el preu de la casa al llogater amb una rebaixa
 to ofereix-preu-rebaixa [sender message]
   ask self[
@@ -591,7 +733,7 @@ end
 ;; Comprova el preu i si es inferior al sou la lloga
 to comprova-preu [sender preu]
   ask self[
-    print (word self preu " cobra " preu-sou)
+    ;; print (word self preu " cobra " preu-sou)
     ifelse preu < preu-sou
     [
      llogar-casa sender "Vull llogar"
@@ -607,13 +749,12 @@ to comprova-preu [sender preu]
       ]
      [
         set cases-visitades lput sender cases-visitades
-        print (word self cases-visitades)
+        ;; print (word self cases-visitades)
         set moviment true
         set objectiu false
         set casa-objectiu nobody
         set rebaixes 0
         ask sender[
-          print (word self)
           set buida true
         ]
     ]
@@ -624,7 +765,10 @@ end
 ;; Quan un llogater s'enva reestablim certs valors
 to alliberar-casa
   ask self[
+    let deposit (preu-lloguer * pagament-avancat)
+    set diners diners - deposit
     ask llogater[
+    set diners diners + deposit
       ifelse classe = "T" [
         set cases-llogades-T cases-llogades-T - 1
       ][
@@ -656,6 +800,7 @@ to alliberar-llogater-reservant [llogater-temp]
     set moviment true
     set inici-visites false
     set objectiu false
+    set casa-objectiu nobody
     set rebaixes 0
   ]
 end
@@ -691,8 +836,11 @@ to activa-lloguer [sender]
     set color red
     set llogater sender
     set llogada true
-
+    let preu-lloguer-temp preu-lloguer
+    ;;Mesos a pagar per avancat
+    let pagament-avancat-temp pagament-avancat
     ask llogater[
+      set diners diners - (preu-lloguer-temp * pagament-avancat-temp)
       ifelse classe = "T" [
         set cases-llogades-T cases-llogades-T + 1
       ][
@@ -707,6 +855,8 @@ to activa-lloguer [sender]
         ]
       ]
     ]
+    ;; Como esto no es la compra de ningun producto sino un deposito no ponemos la comission al mercado
+    set diners diners + (preu-lloguer-temp * pagament-avancat-temp)
     set cases-llogades cases-llogades + 1
   ]
 end
@@ -720,12 +870,12 @@ end
   ;; A los ofertas responem preguntant si esta buida
 to process-pregunta-buida-message [sender message]
   send-message sender "buida" message
-  ;print (word self " oferta? " message " from " sender tipo)
+  ;;; print (word self " oferta? " message " from " sender tipo)
 end
 
 ;to process-pong-message [sender message]
 ;  ;; En los buidas solo mostramos que lo hemos recibido
-;  print (word self " PONG! " message " from " sender tipo)
+;  ;; print (word self " PONG! " message " from " sender tipo)
 ;end
 
 to send-message [recipient kind message]
@@ -848,6 +998,39 @@ MONITOR
 422
 ClasseB-Ocupats
 cases-llogades-B
+17
+1
+11
+
+MONITOR
+702
+163
+849
+208
+desocupats-ClasseA
+desocupat-A
+17
+1
+11
+
+MONITOR
+708
+218
+849
+263
+desocupat-ClasseM
+desocupat-M
+17
+1
+11
+
+MONITOR
+709
+280
+849
+325
+desocupat-ClassaB
+desocupat-B
 17
 1
 11
