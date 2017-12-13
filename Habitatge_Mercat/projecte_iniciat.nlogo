@@ -14,6 +14,10 @@ globals [
   canvi-mes
   dia
   bolsa-mercado
+  alarma-social
+  alarma-social-canvi
+  alarma-social-xcor
+  alarma-social-ycor
 ]
 
 turtles-own [
@@ -49,6 +53,8 @@ turtles-own [
   llogaters-punts  ;; Possibles llogaters i puntuacio dels mateixos en una llista amb un maxim de 4 opcions
   visites-llogaters;; Numero de llogaters que han visitat, maxim 4
   soc-llogater     ;; Diu si soc llogater o no
+  mesos-sense-casa  ;; Defineix els anys que porta sense casa
+  mesos-vida         ;; Temps que dura una alarma
 ]
 
 to setup
@@ -62,6 +68,10 @@ to setup
   set cases-llogades-A 0
   set cases-llogades-M 0
   set cases-llogades-B 0
+  set alarma-social 0
+  set alarma-social-canvi 0
+  set alarma-social-xcor 0
+  set alarma-social-ycor 0
   set dia 1
   set mes 1
   set canvi-mes 0
@@ -79,6 +89,7 @@ to setup
       ]
     ]
   ]
+
 
   create-turtles 5 [
     set shape "box"
@@ -148,6 +159,7 @@ to setup
     ]
     set diners 0
     set soc-llogater false
+    set mesos-sense-casa 0
   ]
   ;; El 25% desocupats serien 13 aprox.
   set contador-desocupats 0
@@ -190,6 +202,7 @@ to setup
     ]
     set diners 0
     set soc-llogater false
+    set mesos-sense-casa 0
   ]
 
   ;; El 50% desocupats serien 13 aprox.
@@ -234,6 +247,7 @@ to setup
     ]
     set diners 0
     set soc-llogater false
+    set mesos-sense-casa 0
   ]
 
 ;; Iniciem els llogaters - turistes 25% dels que busquen lloguer
@@ -283,6 +297,7 @@ to setup
     set tot-correcte false
     set llogaters-punts []
     set visites-llogaters 0
+    set mesos-sense-casa 0
   ]
     create-turtles 50 [
     set shape "house"
@@ -339,6 +354,17 @@ to setup
     set llogaters-punts []
     set visites-llogaters 0
   ]
+
+    ;; Possibles alarmes per les 125 persones
+  create-turtles 125 [
+    set tipo "ALARMA"
+    set current-messages []
+    set next-messages []
+    set shape "x"
+    set color red
+    set hidden? not hidden?
+    set mesos-vida 0
+  ]
 end
 
 to go
@@ -368,9 +394,39 @@ end
 
 to move-llogaters
   ask turtles [
+    if tipo = "ALARMA" [
+
+      if canvi-mes = 1 and not hidden?[
+        set mesos-vida mesos-vida - 1
+        if mesos-vida = 0 [
+          set hidden? not hidden?
+        ]
+      ]
+      if (alarma-social-canvi = 1) and hidden? [
+        set xcor alarma-social-xcor
+        set ycor alarma-social-ycor
+        set hidden? not hidden?
+        set alarma-social-canvi 0
+        set mesos-vida 12
+      ]
+    ]
+
     if tipo = "L" [
       ;; Revisem els pisos que ja haviem mirat fa temps
       if canvi-mes = 1[
+        ifelse not soc-llogater [
+          set mesos-sense-casa mesos-sense-casa + 1
+          ;; Si porta 4 anys sense casa generem un avis d'alarma social
+          if mesos-sense-casa = 48 [
+            set alarma-social alarma-social + 1
+            set alarma-social-canvi 1
+            set alarma-social-xcor xcor
+            set alarma-social-ycor ycor
+            set mesos-sense-casa 0
+          ]
+        ] [
+          set mesos-sense-casa 0
+        ]
         set diners (diners + preu-sou)
         ;; print (word self diners)
         set mesos-revisar-pis mesos-revisar-pis - 1
@@ -1164,6 +1220,24 @@ desocupat-B
 17
 1
 11
+
+PLOT
+701
+363
+901
+513
+Habitatges llogats
+lloguers
+cases-llogades
+0.0
+100.0
+0.0
+100.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot cases-llogades"
 
 @#$#@#$#@
 ## WHAT IS IT?
