@@ -126,7 +126,7 @@ to setup
   let contador-desocupats 0
   let contador-contracte 0
   set desocupat-A 0
-  create-turtles 25 [
+  create-turtles (habitantes * 0.25) [
     set shape "person"
     set next-messages [] ;; Inicializamos las listas de mensajes recibidos
     setxy random-xcor random-ycor
@@ -169,7 +169,7 @@ to setup
   set contador-desocupats 0
   set contador-contracte 0
   set desocupat-M 0
-  create-turtles 50 [
+  create-turtles (habitantes * 0.5) [
     set shape "person"
     set next-messages [] ;; Inicializamos las listas de mensajes recibidos
     setxy random-xcor random-ycor
@@ -213,7 +213,7 @@ to setup
   set contador-desocupats 0
   set contador-contracte 0
   set desocupat-B 0
-  create-turtles 25 [
+  create-turtles (habitantes * 0.25) [
     set shape "person"
     set next-messages [] ;; Inicializamos las listas de mensajes recibidos
     setxy random-xcor random-ycor
@@ -255,7 +255,7 @@ to setup
   ]
 
 ;; Iniciem els llogaters - turistes 25% dels que busquen lloguer
-  create-turtles 25 [
+  create-turtles turistas [
     set shape "person"
     set next-messages [] ;; Inicializamos las listas de mensajes recibidos
     setxy random-xcor random-ycor
@@ -277,7 +277,7 @@ to setup
 
   ;;Iniciem les cases que tenen uns propietaris i les dividim per classes
   set cases []
-  create-turtles 25 [
+  create-turtles (casas * 0.25) [
     set shape "house"
     set color white
     set next-messages [] ;; Inicializamos las listas de mensajes recibidos
@@ -303,7 +303,7 @@ to setup
     set visites-llogaters 0
     set mesos-sense-casa 0
   ]
-    create-turtles 50 [
+    create-turtles (casas * 0.5) [
     set shape "house"
     set color white
     set next-messages [] ;; Inicializamos las listas de mensajes recibidos
@@ -331,7 +331,7 @@ to setup
     set llogaters-punts []
     set visites-llogaters 0
   ]
-    create-turtles 25 [
+    create-turtles (casas * 0.25) [
     set shape "house"
     set color white
     set next-messages [] ;; Inicializamos las listas de mensajes recibidos
@@ -1298,6 +1298,39 @@ PENS
 "Classes Baixa" 1.0 0 -2674135 true "" "plot cases-llogades-B"
 "Turistes" 1.0 0 -7500403 true "" "plot cases-llogades-T"
 
+INPUTBOX
+18
+388
+68
+448
+casas
+100.0
+1
+0
+Number
+
+INPUTBOX
+70
+390
+134
+450
+habitantes
+100.0
+1
+0
+Number
+
+INPUTBOX
+139
+390
+189
+450
+turistas
+25.0
+1
+0
+Number
+
 @#$#@#$#@
 ## WHAT IS IT?
 
@@ -1640,7 +1673,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.2
+NetLogo 6.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
