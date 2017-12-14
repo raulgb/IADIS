@@ -18,6 +18,8 @@ globals [
   alarma-social-canvi
   alarma-social-xcor
   alarma-social-ycor
+  ganancia-mensual
+  ganancia-anterior
 ]
 
 turtles-own [
@@ -72,6 +74,8 @@ to setup
   set alarma-social-canvi 0
   set alarma-social-xcor 0
   set alarma-social-ycor 0
+  set ganancia-mensual 0
+  set ganancia-anterior 0
   set dia 1
   set mes 1
   set canvi-mes 0
@@ -370,11 +374,27 @@ end
 to go
   augmentem-dia            ;; Augmentem el dia en que ens trobem
   move-llogaters           ; Mou els llogaters
+  contar-ganancias         ;; Ganancias mensuales de cada propietario
   swap-messages            ;; Activamos los mensajes mandados en la iteración anterior
   process-messages         ;; Procesamos los mensajes
   ;; move? do something?   ;; Actuamos
   send-messages            ;; Mandamos mensajes nuevos
   tick
+end
+
+to contar-ganancias
+    let ganancia-temporal 0
+  ask turtles[
+   if tipo = "P" [
+     if canvi-mes = 1 [
+        set ganancia-temporal ganancia-temporal + diners
+      ]
+    ]
+  ]
+  if canvi-mes = 1 [
+    set ganancia-mensual ganancia-temporal - ganancia-anterior
+    set ganancia-anterior ganancia-temporal
+  ]
 end
 
 ;; Per cada passa augmenta un dia
@@ -1117,10 +1137,10 @@ NIL
 1
 
 BUTTON
-108
-46
-171
-79
+107
+43
+170
+76
 Run
 go
 T
@@ -1134,10 +1154,10 @@ NIL
 1
 
 MONITOR
-35
-93
-137
-138
+54
+103
+156
+148
 cases-lloguer
 cases-llogades
 17
@@ -1145,54 +1165,54 @@ cases-llogades
 11
 
 MONITOR
-64
-197
-188
-242
-Turistes-ocupats
+54
+159
+178
+204
+Turistes-llogats
 cases-llogades-T
 17
 1
 11
 
 MONITOR
-46
-267
-171
-312
-ClasseA-Ocupats
+52
+216
+177
+261
+ClasseA-llogats
 cases-llogades-A
 17
 1
 11
 
 MONITOR
-44
-322
-171
-367
-ClasseM-Ocupats
+50
+271
+177
+316
+ClasseM-llogats
 cases-llogades-M
 17
 1
 11
 
 MONITOR
-44
-377
-170
-422
-ClasseB-Ocupats
+50
+326
+176
+371
+ClasseB-llogats
 cases-llogades-B
 17
 1
 11
 
 MONITOR
-702
-163
-849
-208
+710
+362
+823
+407
 desocupats-ClasseA
 desocupat-A
 17
@@ -1200,10 +1220,10 @@ desocupat-A
 11
 
 MONITOR
-708
-218
-849
-263
+852
+362
+962
+407
 desocupat-ClasseM
 desocupat-M
 17
@@ -1211,10 +1231,10 @@ desocupat-M
 11
 
 MONITOR
-709
-280
-849
-325
+1008
+364
+1112
+409
 desocupat-ClassaB
 desocupat-B
 17
@@ -1222,10 +1242,10 @@ desocupat-B
 11
 
 PLOT
-701
-363
-901
-513
+916
+10
+1116
+160
 Habitatges llogats
 lloguers
 cases-llogades
@@ -1238,6 +1258,45 @@ false
 "" ""
 PENS
 "default" 1.0 0 -16777216 true "" "plot cases-llogades"
+
+PLOT
+702
+10
+902
+160
+Ganancias Propietarios
+Intercambios
+ganancias
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot ganancia-mensual"
+
+PLOT
+705
+167
+1115
+349
+Llogats
+Lloguers
+Llogats
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"Classes Alta" 1.0 0 -13345367 true "" "plot cases-llogades-A"
+"Classes Mitja" 1.0 0 -10899396 true "" "plot cases-llogades-M"
+"Classes Baixa" 1.0 0 -2674135 true "" "plot cases-llogades-B"
+"Turistes" 1.0 0 -7500403 true "" "plot cases-llogades-T"
 
 @#$#@#$#@
 ## WHAT IS IT?
